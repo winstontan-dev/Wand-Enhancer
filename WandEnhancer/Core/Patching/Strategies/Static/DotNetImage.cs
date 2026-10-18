@@ -78,6 +78,77 @@ namespace WandEnhancer.Core.Patching.Strategies.Static
             return hits;
         }
 
+        /// <summary>Finds the sole no-argument bool predicate on the type loading a stable string.</summary>
+        public long FindBoolPredicateOffsetByTypeStringAnchor(string anchor)
+        {
+            TypeDefinitionHandle owner = default;
+            foreach (TypeDefinitionHandle type in _reader.TypeDefinitions)
+            {
+                foreach (MethodDefinitionHandle handle in _reader.GetTypeDefinition(type).GetMethods())
+                {
+                    int rva = _reader.GetMethodDefinition(handle).RelativeVirtualAddress;
+                    if (rva == 0 || !BodyLoadsString(_pe.GetMethodBody(rva).GetILBytes(), anchor)) continue;
+                    if (!owner.IsNil && !owner.Equals(type))
+                        throw new InvalidDataException("More than one auxiliary type references the Electron fuse sentinel.");
+                    owner = type;
+                    break;
+                }
+            }
+            if (owner.IsNil) return -1;
+
+            long found = -1;
+            foreach (MethodDefinitionHandle handle in _reader.GetTypeDefinition(owner).GetMethods())
+            {
+                MethodDefinition method = _reader.GetMethodDefinition(handle);
+                if (method.RelativeVirtualAddress == 0) continue;
+                BlobReader signature = _reader.GetBlobReader(method.Signature);
+                if (signature.ReadSignatureHeader().IsGeneric || signature.ReadCompressedInteger() != 0 ||
+                    signature.ReadSignatureTypeCode() != SignatureTypeCode.Boolean) continue;
+                if (found >= 0) throw new InvalidDataException("More than one no-argument bool predicate on the auxiliary fuse type.");
+                if (_pe.GetMethodBody(method.RelativeVirtualAddress).GetILBytes().Length < 2)
+                    throw new InvalidDataException("The auxiliary fuse predicate body is too short.");
+                found = IlFileOffset(method.RelativeVirtualAddress);
+            }
+            if (found < 0) throw new InvalidDataException("No no-argument bool predicate on the auxiliary fuse type.");
+            return found;
+        }
+
+        // Inspect instruction boundaries, not token-like bytes inside operands.
+        private bool BodyLoadsString(byte[] il, string text)
+        {
+            int ip = 0;
+            while (ip < il.Length)
+            {
+                byte op = il[ip];
+                if (op == 0xFE)
+                {
+                    if (ip + 2 > il.Length) throw new BadImageFormatException("Truncated two-byte IL opcode.");
+                    ip += 2 + TwoByte[il[ip + 1]];
+                }
+                else if (op == 0x72 && ip + 5 <= il.Length)
+                {
+                    uint token = ReadU32(il, ip + 1);
+                    if ((token & 0xFF000000u) == 0x70000000u && string.Equals(
+                        _reader.GetUserString(MetadataTokens.UserStringHandle((int)(token & 0x00FFFFFFu))),
+                        text, StringComparison.Ordinal)) return true;
+                    ip += 5;
+                }
+                else if (op == 0x45)
+                {
+                    if (ip + 5 > il.Length) throw new BadImageFormatException("Truncated IL switch.");
+                    long next = ip + 5L + (long)ReadU32(il, ip + 1) * 4;
+                    if (next > il.Length) throw new BadImageFormatException("IL switch table exceeds the method body.");
+                    ip = (int)next;
+                }
+                else
+                {
+                    ip += 1 + OneByte[op];
+                }
+                if (ip > il.Length) throw new BadImageFormatException("IL operand exceeds the method body.");
+            }
+            return false;
+        }
+
         private int FindMethodToken(string name)
         {
             foreach (MethodDefinitionHandle handle in _reader.MethodDefinitions)

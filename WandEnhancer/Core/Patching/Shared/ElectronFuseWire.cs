@@ -9,6 +9,7 @@ namespace WandEnhancer.Core.Patching.Shared
     internal static class ElectronFuseWire
     {
         public const byte StateRemoved = (byte)'r';
+        public const string SentinelText = "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX";
 
         public const int SentinelLength = 32;
         private const int WireHeaderLength = 2;
@@ -26,7 +27,7 @@ namespace WandEnhancer.Core.Patching.Shared
 
         // Fixed @electron/fuses sentinel string.
         private static readonly byte[] Sentinel =
-            Encoding.ASCII.GetBytes("dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX");
+            Encoding.ASCII.GetBytes(SentinelText);
 
         /// <summary>Gets image-base offset of the state byte for a mapped process.</summary>
         /// <returns>-1 if no fuse block found.</returns>

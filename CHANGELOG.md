@@ -3,6 +3,17 @@
 This file is the source of truth for release notes.
 The newest entry must match the version in `WandEnhancer/Properties/AssemblyInfo.cs`.
 
+## [2.1.0.1] - 2026-10-18
+
+### Fixes
+
+- Fixed Static patches causing trainer launches to fail with `client_integrity_failed` on newer Wand clients. The patch now synchronizes the executable's embedded ASAR header hash and handles the auxiliary service's independent fuse check. Verified live with Enshrouded on Wand 12.64.1, including trainer activation, overlay injection and cheat controls.
+- Preserve and validate the original executable integrity hash during repatching, rollback and Restore, so the original executable can be restored byte-for-byte. A mismatched hash backup fails without deleting the recovery files.
+
+### Validation
+
+- Added static integrity regression checks for temporary PE/ASAR fixtures, ambiguous patch targets, repeated patching, rollback and Restore. Optional real-installation checks operate only on temporary copies.
+
 ## [2.1.0.0] - 2026-09-09
 
 ### Features

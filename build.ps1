@@ -118,5 +118,9 @@ Invoke-Step 'Test structural patch locators' {
     & (Join-Path $repoRoot 'scripts\test-patch-locators.ps1') -AssemblyPath $assemblyPath
 }
 
+Invoke-Step 'Test static integrity patches and restore' {
+    & (Join-Path $repoRoot 'scripts\test-static-integrity.ps1') -AssemblyPath $assemblyPath
+}
+
 Write-Host ''
 Write-Host "Build completed successfully ($Configuration)." -ForegroundColor Green
