@@ -7,6 +7,7 @@ using AsarSharp;
 using WandEnhancer.Core.Patching.Content;
 using WandEnhancer.Core.Patching.Shared;
 using WandEnhancer.Core.Patching.Strategies;
+using WandEnhancer.Core.Patching.Strategies.Static;
 using WandEnhancer.Models;
 using WandEnhancer.Utils;
 
@@ -144,7 +145,7 @@ namespace WandEnhancer.Core
             }
 
             // Start from a pristine executable to not inherit a broken signature from prior static patches.
-            DiskFusePatch.Remove(_weModConfig.ExecutablePath, _logger);
+            RestoreExecutable();
 
             // Never leave a patched archive behind without its launcher.
             try
@@ -289,7 +290,7 @@ namespace WandEnhancer.Core
 
                 // Undo on-disk fuse and launcher deployment to prevent a tampered unlaunchable Wand.
                 LauncherDeployment.Restore(_weModConfig);
-                DiskFusePatch.Remove(_weModConfig.ExecutablePath, _logger);
+                RestoreExecutable();
 
                 _logger("[ENHANCER] Patch failed - the original Wand files were restored.", ELogType.Warn);
             }
@@ -298,6 +299,13 @@ namespace WandEnhancer.Core
                 _logger($"[ENHANCER] Patch failed and the rollback did not finish: {e.Message}. " +
                         "Use Restore before launching Wand.", ELogType.Error);
             }
+        }
+
+        private void RestoreExecutable()
+        {
+            // Restore the original hash before re-enabling Electron's integrity fuse.
+            AsarIntegrityResourcePatch.Restore(_weModConfig.ExecutablePath, _asarPath, _logger);
+            DiskFusePatch.Remove(_weModConfig.ExecutablePath, _logger);
         }
 
         public void Restore()
@@ -326,7 +334,7 @@ namespace WandEnhancer.Core
 
             // Undo all footprints at once: launcher stub and on-disk fuse.
             LauncherDeployment.Restore(_weModConfig);
-            DiskFusePatch.Remove(_weModConfig.ExecutablePath, _logger);
+            RestoreExecutable();
 
             string squirrelRoot = SquirrelRoot;
             foreach (var leftover in new[]

@@ -124,6 +124,8 @@ After building, validate against an original extracted Wand bundle directory:
 
 The locator harness applies patches only to temporary copies and runs `node --check`. Its default synthetic fixtures cover prettified and reminified identifiers separately. Do not commit proprietary extracted bundles.
 
+`scripts/test-static-integrity.ps1 -AssemblyPath <built-executable>` checks static integrity handling with temporary PE/ASAR fixtures, including repeated patches, rollback and byte-for-byte Restore. Add `-WandDirectory <installed-version-directory>` to validate against copies of real Wand files and run the full Pro patch/repatch/restore pipeline. The installed files are read-only inputs; this does not launch Wand or a trainer.
+
 Before releasing an RC, record the exact commit, Wand version/channel and enabled patches, then manually check:
 
 - Fresh patch, upgrade from the previous Enhancer, failed patch followed by retry, and Restore.
